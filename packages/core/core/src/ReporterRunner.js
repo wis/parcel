@@ -45,7 +45,7 @@ export default class ReporterRunner {
     });
 
     if (this.options.patchConsole) {
-      //patchConsole();
+      patchConsole();
     }
   }
 
