@@ -71,6 +71,11 @@ var hmrOptions = {
   '--key <path>': 'path to private key to use with HTTPS',
 };
 
+const prodOptions = {
+  '--no-minify': 'disable minification',
+  '--no-scope-hoist': 'disable scope-hoisting',
+};
+
 function applyOptions(cmd, options) {
   for (let opt in options) {
     cmd.option(
@@ -113,11 +118,20 @@ applyOptions(watch, commonOptions);
 let build = program
   .command('build [input...]')
   .description('bundles for production')
-  .option('--no-minify', 'disable minification')
-  .option('--no-scope-hoist', 'disable scope-hoisting')
   .action(run);
 
 applyOptions(build, commonOptions);
+applyOptions(build, prodOptions);
+
+let debugHanding = program
+  .command('debug-hanging [input...]')
+  .description(
+    'skips building and just overwrite snapshot (useful for shared caches)',
+  )
+  .action(run);
+
+applyOptions(debugHanding, commonOptions);
+applyOptions(debugHanding, prodOptions);
 
 program
   .command('help [command]')
@@ -217,7 +231,13 @@ async function run(entries: Array<string>, command: any) {
     process.on('SIGTERM', exit);
   } else {
     try {
-      await parcel.debugHanging();
+      if (command.name() === 'build') {
+        await parcel.run();
+      } else if (command.name() === 'debug-hanging') {
+        await parcel.debugHanging();
+      } else {
+        throw new Error('Unrecognized Parcel command');
+      }
     } catch (e) {
       // If an exception is thrown during Parcel.build, it is given to reporters in a
       // buildFailure event, and has been shown to the user.
