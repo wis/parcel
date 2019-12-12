@@ -164,9 +164,10 @@ async function run(entries: Array<string>, command: any) {
     packageManager,
     defaultConfig: {
       ...defaultConfig,
-      filePath: (
-        await packageManager.resolve('@parcel/config-default', __filename)
-      ).resolved,
+      filePath: (await packageManager.resolve(
+        '@parcel/config-default',
+        __filename,
+      )).resolved,
     },
     patchConsole: true,
     ...(await normalizeOptions(command)),
@@ -216,7 +217,7 @@ async function run(entries: Array<string>, command: any) {
     process.on('SIGTERM', exit);
   } else {
     try {
-      await parcel.run();
+      await parcel.debugHanging();
     } catch (e) {
       // If an exception is thrown during Parcel.build, it is given to reporters in a
       // buildFailure event, and has been shown to the user.

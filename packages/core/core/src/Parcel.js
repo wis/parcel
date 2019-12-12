@@ -297,6 +297,19 @@ export default class Parcel {
     }
   }
 
+  async debugHanging() {
+    if (!this.#initialized) {
+      await this.init();
+    }
+
+    console.log('HMM');
+
+    if (!this.#initialOptions.workerFarm) {
+      // If there wasn't a workerFarm passed in, we created it. End the farm.
+      await this.#farm.end();
+    }
+  }
+
   // $FlowFixMe
   async [INTERNAL_TRANSFORM]({
     filePath,
