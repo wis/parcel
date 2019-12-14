@@ -13,7 +13,7 @@ const resolveAsync = promisify(_resolve);
 
 export type ResolveResult = {|
   resolved: FilePath | ModuleSpecifier,
-  pkg?: ?PackageJSON
+  pkg?: ?PackageJSON,
 |};
 
 async function findPackage(fs: FileSystem, from: string) {
@@ -51,7 +51,7 @@ function findPackageSync(fs: FileSystem, from: string) {
 export async function resolve(
   fs: FileSystem,
   id: string,
-  opts?: ResolveOptions
+  opts?: ResolveOptions,
 ): Promise<ResolveResult> {
   if (process.env.PARCEL_BUILD_ENV !== 'production') {
     // Yarn patches resolve automatically in a non-linked setup
@@ -67,8 +67,8 @@ export async function resolve(
           basedir != null ? `${basedir}/` : null,
           {
             extensions: opts?.extensions,
-            considerBuiltins: true
-          }
+            considerBuiltins: true,
+          },
         );
 
         if (!res) {
@@ -133,25 +133,25 @@ export async function resolve(
       } catch (err) {
         callback(null, false);
       }
-    }
+    },
   });
 
   if (typeof res === 'string') {
     return {
-      resolved: res
+      resolved: res,
     };
   }
 
   return {
     resolved: res[0],
-    pkg: res[1]
+    pkg: res[1],
   };
 }
 
 export function resolveSync(
   fs: FileSystem,
   id: string,
-  opts?: ResolveOptions
+  opts?: ResolveOptions,
 ): ResolveResult {
   if (process.env.PARCEL_BUILD_ENV !== 'production') {
     // Yarn patches resolve automatically in a non-linked setup
@@ -167,8 +167,8 @@ export function resolveSync(
           basedir != null ? `${basedir}/` : null,
           {
             extensions: opts?.extensions,
-            considerBuiltins: true
-          }
+            considerBuiltins: true,
+          },
         );
 
         if (!res) {
@@ -229,10 +229,10 @@ export function resolveSync(
       } catch (err) {
         return false;
       }
-    }
+    },
   });
 
   return {
-    resolved: res
+    resolved: res,
   };
 }

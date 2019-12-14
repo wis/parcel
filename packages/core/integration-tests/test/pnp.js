@@ -18,14 +18,14 @@ describe('pnp', function() {
 
     try {
       let b = await bundle(
-        path.join(__dirname, '/integration/pnp-require/index.js')
+        path.join(__dirname, '/integration/pnp-require/index.js'),
       );
 
       await assertBundles(b, [
         {
           name: 'index.js',
-          assets: ['index.js', 'local.js', 'index.js']
-        }
+          assets: ['index.js', 'local.js', 'index.js'],
+        },
       ]);
 
       let output = await run(b);
