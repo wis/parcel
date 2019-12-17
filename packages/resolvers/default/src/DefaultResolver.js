@@ -208,10 +208,7 @@ class NodeResolver {
       try {
         let [moduleName, subPath] = this.getModuleParts(filename);
         // $FlowFixMe - injected at runtime
-        let res = require('pnpapi').resolveToUnqualified(
-          moduleName,
-          path.join(process.cwd(), 'index.js'),
-        );
+        let res = require('pnpapi').resolveToUnqualified(moduleName, parent);
 
         resolved = {
           moduleName,

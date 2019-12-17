@@ -17,6 +17,9 @@
     "@babel/preset-env": "^7.4.0",
     "semver": "^5.4.1"
   },
+  "peerDependencies": {
+    "@babel/preset-env": "^7.4.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.4.4"
   }
