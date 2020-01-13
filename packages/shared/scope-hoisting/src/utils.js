@@ -60,3 +60,14 @@ export function isReferenced(bundle: Bundle, bundleGraph: BundleGraph) {
     b => b.type === 'js' && (!b.env.isIsolated() || bundle.env.isIsolated()),
   );
 }
+
+export function removeReference(node, scope) {
+  let binding = scope.getBinding(node.name);
+  if (binding) {
+    let i = binding.referencePaths.findIndex(v => v.node === node);
+    if (i >= 0) {
+      binding.dereference();
+      binding.referencePaths.splice(i, 1);
+    }
+  }
+}

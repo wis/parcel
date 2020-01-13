@@ -18,7 +18,7 @@ import * as t from '@babel/types';
 import traverse from '@babel/traverse';
 import treeShake from './shake';
 import mangleScope from './mangler';
-import {getName, getIdentifier} from './utils';
+import {getName, getIdentifier, removeReference} from './utils';
 import * as esmodule from './formats/esmodule';
 import * as global from './formats/global';
 import * as commonjs from './formats/commonjs';
@@ -159,6 +159,13 @@ export function link({
     return null;
   }
 
+  function referenceIdentifier(path) {
+    let binding = path.scope.getBinding(path.node.name);
+    if (binding) {
+      binding.reference(path);
+    }
+  }
+
   function interop(mod, originalName, path, node) {
     // Handle interop for default imports of CommonJS modules.
     if (mod.meta.isCommonJS && originalName === 'default') {
@@ -184,11 +191,12 @@ export function link({
           }),
         );
 
-        if (binding) {
-          binding.reference(decl.get('declarations.0.init'));
-        }
-
         parent.scope.registerDeclaration(decl);
+
+        // decl = let name = $parcel$interopDefault(node)
+        referenceIdentifier(decl.get('declarations.0.id'));
+        referenceIdentifier(decl.get('declarations.0.init.callee'));
+        referenceIdentifier(decl.get('declarations.0.init.arguments.0'));
       }
 
       return t.identifier(name);
@@ -316,13 +324,14 @@ export function link({
         );
 
         let mod = bundleGraph.getDependencyResolution(dep);
-        let node;
 
         if (!mod) {
           if (dep.isOptional) {
             path.replaceWith(
               THROW_TEMPLATE({MODULE: t.stringLiteral(source.value)}),
             );
+            // $parcel$missingModule("...");
+            referenceIdentifier(path.get('callee'));
           } else if (dep.isWeak && !bundle.env.isLibrary) {
             path.remove();
           } else {
@@ -334,6 +343,7 @@ export function link({
             }
           }
         } else {
+          let node;
           if (mod.meta.id && assets.get(assertString(mod.meta.id))) {
             // Replace with nothing if the require call's result is not used.
             if (!isUnusedValue(path)) {
@@ -350,13 +360,23 @@ export function link({
                 let binding = path.scope.getBinding(name);
                 if (binding && !binding.path.getData('hasESModuleFlag')) {
                   if (binding.path.node.init) {
-                    binding.path
+                    let [expr] = binding.path
                       .getStatementParent()
                       .insertAfter(ESMODULE_TEMPLATE({EXPORTS: name}));
+
+                    // expr = $parcel$defineInteropFlag($....$exports):
+                    referenceIdentifier(expr.get('expression.callee'));
+                    referenceIdentifier(expr.get('expression.arguments.0'));
                   }
 
                   for (let path of binding.constantViolations) {
-                    path.insertAfter(ESMODULE_TEMPLATE({EXPORTS: name}));
+                    let [expr] = path.insertAfter(
+                      ESMODULE_TEMPLATE({EXPORTS: name}),
+                    );
+
+                    // expr = $parcel$defineInteropFlag($....$exports):
+                    referenceIdentifier(expr.get('expression.callee'));
+                    referenceIdentifier(expr.get('expression.arguments.0'));
                   }
 
                   binding.path.setData('hasESModuleFlag', true);
@@ -369,14 +389,34 @@ export function link({
             // function, if statement, or conditional expression.
             if (mod.meta.shouldWrap) {
               let call = t.callExpression(getIdentifier(mod, 'init'), []);
-              node = node ? t.sequenceExpression([call, node]) : call;
+              if (node) {
+                node = t.sequenceExpression([call, node]);
+                path.replaceWith(node);
+
+                // ($...$init(), $...$exports)
+                referenceIdentifier(path.get('expressions.0.callee'));
+                referenceIdentifier(path.get('expressions.1'));
+              } else {
+                path.replaceWith(call);
+
+                // $...$init()
+                referenceIdentifier(path.get('callee'));
+              }
+            } else if (node) {
+              path.replaceWith(node);
+
+              //  $...$exports
+              referenceIdentifier(path);
+            } else {
+              path.remove();
             }
           } else if (mod.type === 'js') {
             node = addBundleImport(mod, path);
-          }
-
-          if (node) {
-            path.replaceWith(node);
+            if (node) {
+              path.replaceWith(node);
+            } else {
+              path.remove();
+            }
           } else {
             path.remove();
           }
@@ -442,7 +482,10 @@ export function link({
             path.remove();
           }
         } else if (t.isIdentifier(id)) {
-          replace(id.name, init.name, path);
+          if (replace(id.name, init.name, path)) {
+            // remove init reference after successful inlining
+            removeReference(init, path.scope.getProgramParent());
+          }
           if (isGlobal) {
             replacements.set(id.name, init.name);
           }
@@ -451,7 +494,7 @@ export function link({
         function replace(id, init, path) {
           let binding = path.scope.getBinding(id);
           if (!binding.constant) {
-            return;
+            return false;
           }
 
           for (let ref of binding.referencePaths) {
@@ -459,6 +502,7 @@ export function link({
           }
 
           path.remove();
+          return true;
         }
       },
     },
@@ -490,7 +534,10 @@ export function link({
 
         // Check if $id$export$name exists and if so, replace the node by it.
         if (identifier) {
+          // remove $id$export$name binding
+          removeReference(path.node.object, path.scope.getProgramParent());
           path.replaceWith(t.identifier(identifier));
+          referenceIdentifier(path);
         }
       },
     },
@@ -511,9 +558,11 @@ export function link({
         // If the export does not exist, replace with an empty object.
         if (!node) {
           node = t.objectExpression([]);
+          path.replaceWith(node);
+        } else {
+          path.replaceWith(node);
+          referenceIdentifier(path);
         }
-
-        path.replaceWith(node);
         return;
       }
 

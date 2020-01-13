@@ -1,9 +1,13 @@
 import * as t from '@babel/types';
+import {removeReference} from './utils';
+import {simple as walkSimple} from 'babylon-walk';
 
 /**
  * This is a small small implementation of dead code removal specialized to handle
  * removing unused exports. All other dead code removal happens in workers on each
  * individual file by babel-minify.
+ * The bindings in the scope *must* reflect the current state of the AST because
+ * the scope is not crawled for performance reasons.
  */
 export default function treeShake(scope, exportedIdentifiers) {
   // Keep passing over all bindings in the scope until we don't remove any.
@@ -14,7 +18,7 @@ export default function treeShake(scope, exportedIdentifiers) {
     removed = false;
 
     // Recrawl to get all bindings.
-    scope.crawl();
+    // scope.crawl();
     Object.keys(scope.bindings).forEach(name => {
       let binding = getUnusedBinding(scope.path, name);
 
@@ -112,7 +116,7 @@ function remove(path) {
       path.parentPath.isExpressionStatement() &&
       ((right = path.get('right')).isPure() || right.isIdentifier())
     ) {
-      path.remove();
+      removePathBindingRecursive(path, path.scope.getProgramParent());
     } else {
       // right side isn't pure
       path.replaceWith(path.node.right);
@@ -130,7 +134,20 @@ function remove(path) {
       path.parentPath.replaceWith(path);
       remove(path.parentPath);
     } else {
-      path.remove();
+      removePathBindingRecursive(path, path.scope.getProgramParent());
     }
   }
+}
+
+const VisitorRemovePathBindingRecursive = {
+  Identifier(node, scope) {
+    removeReference(node, scope);
+  },
+};
+
+// update the bindings in 'scope' of all identifiers
+// inside 'path' to remove need for crawl()ing
+export function removePathBindingRecursive(path, scope) {
+  walkSimple(path.node, VisitorRemovePathBindingRecursive, scope);
+  path.remove();
 }
