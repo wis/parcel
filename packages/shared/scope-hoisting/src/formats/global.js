@@ -6,6 +6,7 @@ import template from '@babel/template';
 import invariant from 'assert';
 import {relativeBundlePath} from '@parcel/utils';
 import {isEntry, isReferenced} from '../utils';
+import {pathPushContainer} from '../utils';
 
 const IMPORT_TEMPLATE = template('var IDENTIFIER = parcelRequire(ASSET_ID)');
 const EXPORT_TEMPLATE = template(
@@ -17,6 +18,7 @@ export function generateBundleImports(
   from: Bundle,
   bundle: Bundle,
   assets: Set<Asset>,
+  _: any, // eslint-disable-line no-unused-vars
 ) {
   let statements = [];
 
@@ -40,7 +42,8 @@ export function generateBundleImports(
   return statements;
 }
 
-export function generateExternalImport() {
+// eslint-disable-next-line no-unused-vars
+export function generateExternalImport(_: any, __: any, ___: any) {
   throw new Error(
     'External modules are not supported when building for browser',
   );
@@ -51,6 +54,7 @@ export function generateExports(
   bundle: Bundle,
   referencedAssets: Set<Asset>,
   path: any,
+  _: any, // eslint-disable-line no-unused-vars
 ) {
   let exported = new Set<Symbol>();
   let statements = [];
@@ -86,6 +90,6 @@ export function generateExports(
   }
 
   // TODO
-  path.pushContainer('body', statements);
+  pathPushContainer(path, 'body', statements);
   return exported;
 }

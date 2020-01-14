@@ -7,11 +7,13 @@ import {relativeBundlePath} from '@parcel/utils';
 import nullthrows from 'nullthrows';
 import invariant from 'assert';
 import rename from '../renamer';
+import {pathReplaceWith, pathInsertAfter} from '../utils';
 
 export function generateBundleImports(
   from: Bundle,
   bundle: Bundle,
   assets: Set<Asset>,
+  _: any, // eslint-disable-line no-unused-vars
 ) {
   let specifiers = [...assets].map(asset => {
     let id = t.identifier(asset.meta.exportsIdentifier);
@@ -29,6 +31,8 @@ export function generateBundleImports(
 export function generateExternalImport(
   bundle: Bundle,
   external: ExternalModule,
+  _: any, // eslint-disable-line no-unused-vars
+  __: any, // eslint-disable-line no-unused-vars
 ) {
   let {source, specifiers, isCommonJS} = external;
   let defaultSpecifier = null;
@@ -146,8 +150,7 @@ export function generateExports(
         !path.isVariableDeclaration() &&
         !path.isImportDeclaration()
       ) {
-        // TODO
-        path.replaceWith(t.exportDefaultDeclaration(path.node));
+        pathReplaceWith(path, t.exportDefaultDeclaration(path.node));
 
         // Otherwise, add export statements after for each identifier.
       } else {
@@ -179,8 +182,7 @@ export function generateExports(
             );
           }
 
-          // TODO
-          path.insertAfter(t.exportNamedDeclaration(null, specifiers));
+          pathInsertAfter(path, t.exportNamedDeclaration(null, specifiers));
         }
       }
     },

@@ -539,7 +539,6 @@ export function link({
         for (let file of importedFiles.values()) {
           if (file.bundle) {
             imports.push(
-              // $FlowFixMe
               ...format.generateBundleImports(
                 bundle,
                 file.bundle,
@@ -549,7 +548,6 @@ export function link({
             );
           } else {
             imports.push(
-              // $FlowFixMe
               ...format.generateExternalImport(bundle, file, path.scope),
             );
           }
@@ -558,14 +556,15 @@ export function link({
         if (imports.length > 0) {
           // Add import statements and update scope to collect references
           pathUnshiftContainer(path, 'body', imports);
-          // console.log(JSON.stringify(imports));
+
           // path.scope.dump();
-          path.scope.crawl(); // TODO, the identifier that is imported doesn't have a binding
+          // TODO, there is no binding with the name of the identifier that was created...
+          // we need to track that before the import is inserted
+          path.scope.crawl();
           // path.scope.dump();
         }
 
         // Generate exports
-        // $FlowFixMe
         let exported = format.generateExports(
           bundleGraph,
           bundle,
@@ -573,7 +572,6 @@ export function link({
           path,
           replacements,
         );
-        path.scope.crawl(); // TODO remove (because of generateExports)
 
         treeShake(path.scope, exported);
         if (options.minify) {

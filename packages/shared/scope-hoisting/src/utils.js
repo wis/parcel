@@ -80,6 +80,8 @@ export function pathReplaceWith(path: any, node: any) {
   let scope = path.scope.getProgramParent();
   walkSimple(path.node, RemoveVisitor, scope);
   let path2 = path.replaceWith(node);
+  // TODO what?
+  path2 = Array.isArray(path2) ? path2[0] : path2;
   if (path2.isDeclaration()) {
     scope.registerDeclaration(path2);
   }
@@ -117,6 +119,22 @@ export function pathUnshiftContainer(
 ) {
   let scope = path.scope.getProgramParent();
   let paths = path.unshiftContainer(listKey, nodes);
+  for (let p of paths) {
+    if (p.isDeclaration()) {
+      scope.registerDeclaration(p);
+    }
+    crawlGlobal(p, scope);
+  }
+}
+
+// like path.pushContainer(nodes), but updates bindings in path.scope.getProgramParent()
+export function pathPushContainer(
+  path: any,
+  listKey: string,
+  nodes: Array<any>,
+) {
+  let scope = path.scope.getProgramParent();
+  let paths = path.pushContainer(listKey, nodes);
   for (let p of paths) {
     if (p.isDeclaration()) {
       scope.registerDeclaration(p);

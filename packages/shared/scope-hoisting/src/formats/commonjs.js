@@ -7,6 +7,7 @@ import template from '@babel/template';
 import invariant from 'assert';
 import {relativeBundlePath} from '@parcel/utils';
 import rename from '../renamer';
+import {pathRemove, pathInsertAfter, pathPushContainer} from '../utils';
 
 const REQUIRE_TEMPLATE = template('require(BUNDLE)');
 const EXPORT_TEMPLATE = template('exports.IDENTIFIER = IDENTIFIER');
@@ -264,7 +265,7 @@ export function generateExports(
             path.node.name = 'exports';
           }
 
-          binding.path.remove(); // TODO
+          pathRemove(binding.path);
           exported.add('exports');
         } else {
           exported.add(exportsId);
@@ -296,8 +297,8 @@ export function generateExports(
         let binding = path.scope.getBinding(symbol);
         rename(path.scope, symbol, exportSymbol);
 
-        // TODO
-        binding.path.getStatementParent().insertAfter(
+        pathInsertAfter(
+          binding.path.getStatementParent(),
           EXPORT_TEMPLATE({
             IDENTIFIER: t.identifier(exportSymbol),
           }),
@@ -319,7 +320,6 @@ export function generateExports(
     }
   }
 
-  // TODO
-  path.pushContainer('body', statements);
+  pathPushContainer(path, 'body', statements);
   return exported;
 }
