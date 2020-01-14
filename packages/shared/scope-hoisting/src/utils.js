@@ -1,6 +1,7 @@
 // @flow
 import type {Asset, MutableAsset, Bundle, BundleGraph} from '@parcel/types';
 import * as t from '@babel/types';
+import {simple as walkSimple} from 'babylon-walk';
 
 export function getName(
   asset: Asset | MutableAsset,
@@ -61,13 +62,120 @@ export function isReferenced(bundle: Bundle, bundleGraph: BundleGraph) {
   );
 }
 
-export function removeReference(node, scope) {
+const RemoveVisitor = {
+  Identifier(node, scope) {
+    dereferenceIdentifier(node, scope);
+  },
+};
+
+// like path.remove(), but updates bindings in path.scope.getProgramParent()
+export function pathRemove(path: any) {
+  let scope = path.scope.getProgramParent();
+  walkSimple(path.node, RemoveVisitor, scope);
+  path.remove();
+}
+
+// like path.replaceWith(node), but updates bindings in path.scope.getProgramParent()
+export function pathReplaceWith(path: any, node: any) {
+  let scope = path.scope.getProgramParent();
+  walkSimple(path.node, RemoveVisitor, scope);
+  let path2 = path.replaceWith(node);
+  if (path2.isDeclaration()) {
+    scope.registerDeclaration(path2);
+  }
+  crawlGlobal(path2, scope);
+  return path2;
+}
+
+// like path.insertBefore(node), but updates bindings in path.scope.getProgramParent()
+export function pathInsertBefore(path: any, node: any) {
+  let scope = path.scope.getProgramParent();
+  let [path2] = path.insertBefore(node);
+  if (path2.isDeclaration()) {
+    scope.registerDeclaration(path2);
+  }
+  crawlGlobal(path2, scope);
+  return path2;
+}
+
+// like path.insertAfter(node), but updates bindings in path.scope.getProgramParent()
+export function pathInsertAfter(path: any, node: any) {
+  let scope = path.scope.getProgramParent();
+  let [path2] = path.insertAfter(node);
+  if (path2.isDeclaration()) {
+    scope.registerDeclaration(path2);
+  }
+  crawlGlobal(path2, scope);
+  return path2;
+}
+
+// like path.unshiftContainer(nodes), but updates bindings in path.scope.getProgramParent()
+export function pathUnshiftContainer(
+  path: any,
+  listKey: string,
+  nodes: Array<any>,
+) {
+  let scope = path.scope.getProgramParent();
+  let paths = path.unshiftContainer(listKey, nodes);
+  for (let p of paths) {
+    if (p.isDeclaration()) {
+      scope.registerDeclaration(p);
+    }
+    crawlGlobal(p, scope);
+  }
+}
+
+function dereferenceIdentifier(node, scope) {
   let binding = scope.getBinding(node.name);
   if (binding) {
     let i = binding.referencePaths.findIndex(v => v.node === node);
     if (i >= 0) {
       binding.dereference();
       binding.referencePaths.splice(i, 1);
+      return;
+    }
+
+    let j = binding.constantViolations.findIndex(v =>
+      Object.values(v.getBindingIdentifiers()).includes(node),
+    );
+    if (j >= 0) {
+      binding.constantViolations.splice(j, 1);
+      if (binding.constantViolations.length == 0) {
+        binding.constant = true;
+      }
+      return;
+    }
+  }
+}
+
+function crawlGlobal(path, scope) {
+  if (!path) return;
+
+  const keys = t.VISITOR_KEYS[path.type];
+  if (!keys) return;
+
+  switch (path.type) {
+    case 'Identifier':
+      {
+        let binding = scope.getBinding(path.node.name);
+        if (binding) binding.reference(path);
+      }
+      break;
+    case 'AssignmentExpression':
+    case 'UpdateExpression':
+      scope.registerConstantViolation(path);
+      break;
+  }
+
+  for (const key of keys) {
+    const subNode = path.get(key);
+
+    if (Array.isArray(subNode)) {
+      for (const path of subNode) {
+        crawlGlobal(path, scope);
+      }
+    } else {
+      crawlGlobal(subNode, scope);
     }
   }
 }

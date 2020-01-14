@@ -1,6 +1,5 @@
 import * as t from '@babel/types';
-import {removeReference} from './utils';
-import {simple as walkSimple} from 'babylon-walk';
+import {pathRemove} from './utils';
 
 /**
  * This is a small small implementation of dead code removal specialized to handle
@@ -28,8 +27,11 @@ export default function treeShake(scope, exportedIdentifiers) {
       }
 
       // Remove the binding and all references to it.
-      removePathBindingRecursive(binding.path, scope);
-      binding.referencePaths.concat(binding.constantViolations).forEach(remove);
+
+      pathRemove(binding.path, scope);
+      binding.referencePaths
+        .concat(binding.constantViolations)
+        .forEach(p => remove(p, scope));
 
       scope.removeBinding(name);
       removed = true;
@@ -101,13 +103,14 @@ function isUnusedWildcard(path) {
   );
 }
 
-function remove(path) {
+function remove(path, scope) {
   if (path.isAssignmentExpression()) {
     let right;
     if (
       path.parentPath.isSequenceExpression() &&
       path.parent.expressions.length === 1
     ) {
+      // TODO dead?
       // replace sequence expression with it's sole child
       path.parentPath.replaceWith(path);
       remove(path.parentPath);
@@ -116,8 +119,9 @@ function remove(path) {
       path.parentPath.isExpressionStatement() &&
       ((right = path.get('right')).isPure() || right.isIdentifier())
     ) {
-      removePathBindingRecursive(path, path.scope.getProgramParent());
+      pathRemove(path, scope);
     } else {
+      // TODO dead?
       // right side isn't pure
       path.replaceWith(path.node.right);
     }
@@ -130,24 +134,12 @@ function remove(path) {
       path.parentPath.isSequenceExpression() &&
       path.parent.expressions.length === 1
     ) {
+      // TODO dead?
       // replace sequence expression with it's sole child
       path.parentPath.replaceWith(path);
       remove(path.parentPath);
     } else {
-      removePathBindingRecursive(path, path.scope.getProgramParent());
+      pathRemove(path, scope);
     }
   }
-}
-
-const VisitorRemovePathBindingRecursive = {
-  Identifier(node, scope) {
-    removeReference(node, scope);
-  },
-};
-
-// update the bindings in 'scope' of all identifiers
-// inside 'path' to remove need for crawl()ing
-export function removePathBindingRecursive(path, scope) {
-  walkSimple(path.node, VisitorRemovePathBindingRecursive, scope);
-  path.remove();
 }

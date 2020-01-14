@@ -131,6 +131,7 @@ export function generateExports(
       // If all exports in the binding are named exports, export the entire declaration.
       // Also rename all of the identifiers to their exported name.
       if (exportedIds.length === ids.length && !path.isImportDeclaration()) {
+        // TODO
         path.replaceWith(t.exportNamedDeclaration(path.node, []));
         for (let id of exportedIds) {
           let exportName = nullthrows(exportedIdentifiers.get(id));
@@ -145,6 +146,7 @@ export function generateExports(
         !path.isVariableDeclaration() &&
         !path.isImportDeclaration()
       ) {
+        // TODO
         path.replaceWith(t.exportDefaultDeclaration(path.node));
 
         // Otherwise, add export statements after for each identifier.
@@ -157,6 +159,7 @@ export function generateExports(
               binding.constantViolations[binding.constantViolations.length - 1];
           }
 
+          // TODO
           insertPath.insertAfter(
             t.exportDefaultDeclaration(t.identifier(defaultExport)),
           );
@@ -176,6 +179,7 @@ export function generateExports(
             );
           }
 
+          // TODO
           path.insertAfter(t.exportNamedDeclaration(null, specifiers));
         }
       }

@@ -264,7 +264,7 @@ export function generateExports(
             path.node.name = 'exports';
           }
 
-          binding.path.remove();
+          binding.path.remove(); // TODO
           exported.add('exports');
         } else {
           exported.add(exportsId);
@@ -296,6 +296,7 @@ export function generateExports(
         let binding = path.scope.getBinding(symbol);
         rename(path.scope, symbol, exportSymbol);
 
+        // TODO
         binding.path.getStatementParent().insertAfter(
           EXPORT_TEMPLATE({
             IDENTIFIER: t.identifier(exportSymbol),
@@ -306,6 +307,7 @@ export function generateExports(
         // after each constant violation so this remains true.
         if (exportSymbol !== 'default') {
           for (let path of binding.constantViolations) {
+            // TODO
             path.insertAfter(
               EXPORT_TEMPLATE({
                 IDENTIFIER: t.identifier(exportSymbol),
@@ -317,6 +319,7 @@ export function generateExports(
     }
   }
 
+  // TODO
   path.pushContainer('body', statements);
   return exported;
 }

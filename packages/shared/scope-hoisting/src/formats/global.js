@@ -85,6 +85,7 @@ export function generateExports(
     );
   }
 
+  // TODO
   path.pushContainer('body', statements);
   return exported;
 }
