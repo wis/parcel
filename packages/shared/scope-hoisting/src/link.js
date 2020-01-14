@@ -613,6 +613,7 @@ export function link({
           replacements,
         );
 
+        path.scope.crawl(); // TODO remove
         treeShake(path.scope, exported);
         if (options.minify) {
           mangleScope(path.scope, exported);

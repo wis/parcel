@@ -28,7 +28,7 @@ export default function treeShake(scope, exportedIdentifiers) {
       }
 
       // Remove the binding and all references to it.
-      binding.path.remove();
+      removePathBindingRecursive(binding.path, scope);
       binding.referencePaths.concat(binding.constantViolations).forEach(remove);
 
       scope.removeBinding(name);
