@@ -63,12 +63,25 @@ function isPure(binding) {
     binding.path.get('id').isIdentifier()
   ) {
     let init = binding.path.get('init');
-    return (
+    if (
       init.isPure() ||
       init.isIdentifier() ||
       init.isThisExpression() ||
       binding.path.node.id.name === '$parcel$global'
-    );
+    ) {
+      return true;
+    }
+
+    let leadingComments = init.node.leadingComments;
+    if (
+      init.isCallExpression() &&
+      leadingComments &&
+      leadingComments.length > 0
+    ) {
+      let lastComment = leadingComments[leadingComments.length - 1].value;
+      return lastComment === '#__PURE__' || lastComment === '@__PURE__';
+    }
+    return false;
   }
 
   return binding.path.isPure();
