@@ -640,13 +640,12 @@ describe('scope hoisting', function() {
       assert(!/.-./.test(contents));
     });
 
-    it('removes unused transpiled classes using terser when minified', async function() {
+    it('removes unused transpiled classes when minified', async function() {
       let b = await bundle(
         path.join(
           __dirname,
           '/integration/scope-hoisting/es6/tree-shaking-classes-babel/a.js',
         ),
-        {minify: true},
       );
 
       let output = await run(b);
@@ -656,7 +655,7 @@ describe('scope hoisting', function() {
         path.join(distDir, 'a.js'),
         'utf8',
       );
-      assert(!contents.includes('method'));
+      assert(!contents.includes('Cannot call a class as a function'));
     });
 
     it('keeps member expression with computed properties that are variables', async function() {
