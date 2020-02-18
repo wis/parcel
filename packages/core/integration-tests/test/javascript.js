@@ -347,12 +347,27 @@ describe('javascript', function() {
   });
 
   it('should support bundling workers', async function() {
-    let b = await bundle(path.join(__dirname, '/integration/workers/index.js'));
+    let b = await bundle(
+      path.join(__dirname, '/integration/workers/index.js'),
+      {
+        outputFS: inputFS,
+      },
+    );
 
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'common.js', 'worker-client.js', 'feature.js'],
+        assets: [
+          'index.js',
+          'common.js',
+          'worker-client.js',
+          'feature.js',
+          'get-worker-url.js',
+          'bundle-url.js',
+          'JSRuntime.js',
+          'JSRuntime.js',
+          'JSRuntime.js',
+        ],
       },
       {
         assets: ['service-worker.js'],
@@ -378,7 +393,13 @@ describe('javascript', function() {
       },
       {
         name: 'index.js',
-        assets: ['index.js'],
+        assets: [
+          'index.js',
+          'bundle-url.js',
+          'JSRuntime.js',
+          'JSRuntime.js',
+          'get-worker-url.js',
+        ],
       },
       {
         assets: ['shared-worker.js'],
@@ -419,6 +440,11 @@ describe('javascript', function() {
           'common.js',
           'worker-client.js',
           'feature.js',
+          'bundle-url.js',
+          'get-worker-url.js',
+          'JSRuntime.js',
+          'JSRuntime.js',
+          'JSRuntime.js',
         ],
       },
       {
@@ -444,11 +470,20 @@ describe('javascript', function() {
 
       assertBundles(b, [
         {
-          name: `index-${workerType}.js`,
-          assets: [`index-${workerType}.js`],
+          assets: [
+            'importScripts.js',
+            'bundle-url.js',
+            'JSRuntime.js',
+            'JSRuntime.js',
+          ],
         },
         {
-          assets: ['importScripts.js'],
+          name: `index-${workerType}.js`,
+          assets: [
+            `index-${workerType}.js`,
+            'bundle-url.js',
+            'JSRuntime.js',
+          ].concat(workerType === 'webworker' ? ['get-worker-url.js'] : []),
         },
         {
           assets: ['imported.js'],
@@ -470,8 +505,13 @@ describe('javascript', function() {
       );
 
       assert(
-        workerBundleContents.match(
-          /importScripts\("\/imported\.[0-9a-f]*\.js"\);\nimportScripts\("\/imported\.[0-9a-f]*\.js", "\/imported2\.[0-9a-f]*\.js"\);/,
+        workerBundleContents.includes(
+          'importScripts(require("imported.js"));\n',
+        ),
+      );
+      assert(
+        workerBundleContents.includes(
+          'importScripts(require("imported.js"), require("imported2.js"));\n',
         ),
       );
     });
@@ -486,8 +526,16 @@ describe('javascript', function() {
     );
 
     assertBundles(b, [
-      {name: 'index-external.js', assets: ['index-external.js']},
-      {assets: ['external.js']},
+      {
+        name: 'index-external.js',
+        assets: [
+          'index-external.js',
+          'bundle-url.js',
+          'get-worker-url.js',
+          'JSRuntime.js',
+        ],
+      },
+      {assets: ['external.js', 'JSRuntime.js']},
     ]);
 
     let workerBundleFile = path.join(
@@ -503,7 +551,12 @@ describe('javascript', function() {
 
     assert(
       workerBundleContents.includes(
-        'importScripts("https://unpkg.com/parcel");',
+        'importScripts(require("https://unpkg.com/parcel"));',
+      ),
+    );
+    assert(
+      workerBundleContents.includes(
+        'module.exports = "https://unpkg.com/parcel";',
       ),
     );
   });
@@ -516,7 +569,13 @@ describe('javascript', function() {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'index.js'],
+        assets: [
+          'index.js',
+          'index.js',
+          'bundle-url.js',
+          'JSRuntime.js',
+          'JSRuntime.js',
+        ],
       },
       {
         assets: ['worker-nested.js'],
@@ -535,7 +594,12 @@ describe('javascript', function() {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js'],
+        assets: [
+          'index.js',
+          'bundle-url.js',
+          'JSRuntime.js',
+          'get-worker-url.js',
+        ],
       },
       {
         assets: ['worker.js', 'worker-dep.js'],
@@ -586,10 +650,21 @@ describe('javascript', function() {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'lodash.js'],
+        assets: [
+          'index.js',
+          'lodash.js',
+          'bundle-url.js',
+          'get-worker-url.js',
+          'JSRuntime.js',
+        ],
       },
       {
-        assets: ['worker-a.js'],
+        assets: [
+          'worker-a.js',
+          'JSRuntime.js',
+          'bundle-url.js',
+          'get-worker-url.js',
+        ],
       },
       {
         assets: ['worker-b.js'],
@@ -619,7 +694,12 @@ describe('javascript', function() {
         assets: ['index.html'],
       },
       {
-        assets: ['index.js'],
+        assets: [
+          'index.js',
+          'bundle-url.js',
+          'JSRuntime.js',
+          'get-worker-url.js',
+        ],
       },
       {
         assets: ['worker.js'],
@@ -655,7 +735,7 @@ describe('javascript', function() {
         ],
       },
       {
-        assets: ['local.js', 'test.txt.js'],
+        assets: ['local.js', 'JSRuntime.js'],
       },
       {
         assets: ['test.txt'],
@@ -739,6 +819,7 @@ describe('javascript', function() {
         name: 'index.js',
         assets: [
           'index.js',
+          'c.js',
           'bundle-url.js',
           'cacheLoader.js',
           'js-loader.js',
@@ -888,7 +969,7 @@ describe('javascript', function() {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'test.txt.js'],
+        assets: ['index.js', 'bundle-url.js', 'JSRuntime.js'],
       },
       {
         type: 'txt',
@@ -922,7 +1003,7 @@ describe('javascript', function() {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'test.txt.js'],
+        assets: ['index.js', 'JSRuntime.js', 'bundle-url.js'],
       },
       {
         type: 'txt',
@@ -974,6 +1055,21 @@ describe('javascript', function() {
     });
   });
 
+  it('should not insert global variables when used in a module specifier', async function() {
+    let b = await bundle(
+      path.join(__dirname, '/integration/globals-module-specifier/a.js'),
+    );
+
+    assertBundles(b, [
+      {
+        assets: ['a.js', 'b.js', 'c.js'],
+      },
+    ]);
+
+    let output = await run(b);
+    assert.deepEqual(output, 1234);
+  });
+
   it('should handle re-declaration of the global constant', async function() {
     let b = await bundle(
       path.join(__dirname, '/integration/global-redeclare/index.js'),
@@ -1005,9 +1101,29 @@ describe('javascript', function() {
     assert.equal(output(), 'test:test');
   });
 
-  it.skip('should not insert environment variables in electron environment', async function() {
+  it('should not insert environment variables in electron-main environment', async function() {
     let b = await bundle(path.join(__dirname, '/integration/env/index.js'), {
-      target: 'electron',
+      targets: {
+        main: {
+          context: 'electron-main',
+          distDir: path.join(__dirname, '/integration/env/dist.js'),
+        },
+      },
+    });
+
+    let output = await run(b);
+    assert.ok(output.toString().indexOf('process.env') > -1);
+    assert.equal(output(), 'test:test');
+  });
+
+  it('should not insert environment variables in electron-renderer environment', async function() {
+    let b = await bundle(path.join(__dirname, '/integration/env/index.js'), {
+      targets: {
+        main: {
+          context: 'electron-renderer',
+          distDir: path.join(__dirname, '/integration/env/dist.js'),
+        },
+      },
     });
 
     let output = await run(b);
@@ -1023,6 +1139,18 @@ describe('javascript', function() {
     assert.equal(output(), 'test:test');
   });
 
+  it("should insert the user's NODE_ENV as process.env.NODE_ENV if passed", async function() {
+    let b = await bundle(path.join(__dirname, '/integration/env/index.js'), {
+      env: {
+        NODE_ENV: 'production',
+      },
+    });
+
+    let output = await run(b);
+    assert.ok(output.toString().indexOf('process.env') === -1);
+    assert.equal(output(), 'production:production');
+  });
+
   it('should insert environment variables from a file', async function() {
     let b = await bundle(
       path.join(__dirname, '/integration/env-file/index.js'),
@@ -1033,6 +1161,88 @@ describe('javascript', function() {
 
     let output = await run(b);
     assert.equal(output, 'bartest');
+  });
+
+  it("should insert environment variables matching the user's NODE_ENV if passed", async function() {
+    let b = await bundle(
+      path.join(__dirname, '/integration/env-file/index.js'),
+      {env: {NODE_ENV: 'production'}},
+    );
+
+    let output = await run(b);
+    assert.equal(output, 'productiontest');
+  });
+
+  it('should replace process.browser for target browser', async function() {
+    let b = await bundle(
+      path.join(__dirname, '/integration/process/index.js'),
+      {
+        targets: {
+          main: {
+            context: 'browser',
+            distDir: path.join(__dirname, '/integration/process/dist.js'),
+          },
+        },
+      },
+    );
+
+    let output = await run(b);
+    assert.ok(output.toString().indexOf('process.browser') === -1);
+    assert.equal(output(), true);
+  });
+
+  it('should not touch process.browser for target node', async function() {
+    let b = await bundle(
+      path.join(__dirname, '/integration/process/index.js'),
+      {
+        targets: {
+          main: {
+            context: 'node',
+            distDir: path.join(__dirname, '/integration/process/dist.js'),
+          },
+        },
+      },
+    );
+
+    let output = await run(b);
+    assert.ok(output.toString().indexOf('process.browser') !== -1);
+    assert.equal(output(), false);
+  });
+
+  it('should not touch process.browser for target electron-main', async function() {
+    let b = await bundle(
+      path.join(__dirname, '/integration/process/index.js'),
+      {
+        targets: {
+          main: {
+            context: 'electron-main',
+            distDir: path.join(__dirname, '/integration/process/dist.js'),
+          },
+        },
+      },
+    );
+
+    let output = await run(b);
+    assert.ok(output.toString().indexOf('process.browser') !== -1);
+    assert.equal(output(), false);
+  });
+
+  it('should replace process.browser for target electron-renderer', async function() {
+    let b = await bundle(
+      path.join(__dirname, '/integration/process/index.js'),
+      {
+        targets: {
+          main: {
+            context: 'electron-renderer',
+            distDir: path.join(__dirname, '/integration/process/dist.js'),
+          },
+        },
+      },
+    );
+
+    let output = await run(b);
+    assert.ok(output.toString().indexOf('process.browser') === -1);
+    assert.equal(output(), true);
   });
 
   it.skip('should support adding implicit dependencies', async function() {

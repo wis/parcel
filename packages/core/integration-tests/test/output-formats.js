@@ -314,6 +314,24 @@ describe('output formats', function() {
       assert(dist.includes('exports.test = test;'));
     });
 
+    it('should throw an error on missing export with esmodule input and sideEffects: false', async function() {
+      await assert.rejects(
+        () =>
+          bundle(
+            path.join(
+              __dirname,
+              '/integration/formats/commonjs-sideeffects/missing-export.js',
+            ),
+          ),
+        {
+          name: 'BuildError',
+          message: path.normalize(
+            "test/integration/formats/commonjs-sideeffects/other.js does not export 'a'",
+          ),
+        },
+      );
+    });
+
     it('should support commonjs input', async function() {
       let b = await bundle(
         path.join(__dirname, '/integration/formats/commonjs-dynamic/index.js'),
@@ -504,6 +522,24 @@ describe('output formats', function() {
       assert(async.includes('export const foo'));
     });
 
+    it('should throw an error on missing export with esmodule output and sideEffects: false', async function() {
+      await assert.rejects(
+        () =>
+          bundle(
+            path.join(
+              __dirname,
+              '/integration/formats/esm-sideeffects/missing-export.js',
+            ),
+          ),
+        {
+          name: 'BuildError',
+          message: path.normalize(
+            "test/integration/formats/esm-sideeffects/b.js does not export 'a'",
+          ),
+        },
+      );
+    });
+
     it('should support async split bundles', async function() {
       let b = await bundle(
         path.join(__dirname, '/integration/formats/esm-split/index.js'),
@@ -590,7 +626,7 @@ describe('output formats', function() {
         'utf8',
       );
       assert(entry.includes('function importModule'));
-      assert(/'async.[0-9a-f]*.js'\)/.test(entry));
+      assert(/"async.[0-9a-f]*.js"\)/.test(entry));
 
       let async = await outputFS.readFile(
         b.getBundles().find(b => b.name.startsWith('async')).filePath,
@@ -620,7 +656,7 @@ describe('output formats', function() {
         'utf8',
       );
       assert(entry.includes('Promise.all'));
-      assert(/'async.[0-9a-f]*.css'\)/.test(entry));
+      assert(/"async.[0-9a-f]*.css"\)/.test(entry));
       assert(/import\('' \+ '\.\/async\..+?\.js'\)/.test(entry));
 
       let async = await outputFS.readFile(
@@ -695,7 +731,33 @@ describe('output formats', function() {
       );
     });
 
-    it('should generating ESM from CommonJS', async function() {
+    it('should create correct bundle import for reexports', async function() {
+      let b = await bundle(
+        path.join(
+          __dirname,
+          '/integration/formats/esm-bundle-import-reexport/index.js',
+        ),
+      );
+
+      let dist1 = await outputFS.readFile(
+        b.getBundles().filter(b => b.type === 'js')[0].filePath,
+        'utf8',
+      );
+      let dist2 = await outputFS.readFile(
+        b.getBundles().filter(b => b.type === 'js')[1].filePath,
+        'utf8',
+      );
+
+      let exportName = dist1.match(/export var ([a-z0-9$]+) =/)[1];
+      assert(exportName);
+
+      assert.equal(
+        dist2.match(/import { ([a-z0-9$]+) } from "\.\/index\.js";/)[1],
+        exportName,
+      );
+    });
+
+    it('should support generating ESM from CommonJS', async function() {
       let b = await bundle(
         path.join(__dirname, '/integration/formats/commonjs-esm/index.js'),
       );

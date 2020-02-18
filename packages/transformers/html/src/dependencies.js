@@ -1,6 +1,6 @@
 // @flow
 
-import type {MutableAsset, PluginOptions} from '@parcel/types';
+import type {MutableAsset, Environment} from '@parcel/types';
 import PostHTML from 'posthtml';
 
 import nullthrows from 'nullthrows';
@@ -33,6 +33,7 @@ const ATTRS = {
 // - http://ogp.me
 // - https://developer.twitter.com/en/docs/tweets/optimize-with-cards/overview/markup
 // - https://msdn.microsoft.com/en-us/library/dn255024.aspx
+// - https://vk.com/dev/publications
 const META = {
   property: [
     'og:image',
@@ -42,6 +43,7 @@ const META = {
     'og:audio:secure_url',
     'og:video',
     'og:video:secure_url',
+    'vk:image',
   ],
   name: [
     'twitter:image',
@@ -70,13 +72,11 @@ const OPTIONS = {
   iframe: {
     src: {isEntry: true},
   },
-  script(attrs, options: PluginOptions) {
+  script(attrs, env: Environment) {
     return {
       env: {
         outputFormat:
-          attrs.type === 'module' && options.scopeHoist
-            ? 'esmodule'
-            : undefined,
+          attrs.type === 'module' && env.scopeHoist ? 'esmodule' : undefined,
       },
     };
   },
@@ -105,10 +105,7 @@ function getAttrDepHandler(attr) {
   return (asset, src, opts) => asset.addURLDependency(src, opts);
 }
 
-export default function collectDependencies(
-  asset: MutableAsset,
-  options: PluginOptions,
-) {
+export default function collectDependencies(asset: MutableAsset) {
   let ast = nullthrows(asset.ast);
 
   PostHTML().walk.call(ast.program, node => {
@@ -149,7 +146,7 @@ export default function collectDependencies(
         let depOptionsHandler = OPTIONS[node.tag];
         let depOptions =
           typeof depOptionsHandler === 'function'
-            ? depOptionsHandler(attrs, options)
+            ? depOptionsHandler(attrs, asset.env)
             : depOptionsHandler && depOptionsHandler[attr];
         attrs[attr] = depHandler(asset, attrs[attr], depOptions);
         ast.isDirty = true;

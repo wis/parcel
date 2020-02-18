@@ -8,7 +8,9 @@ import logger from '@parcel/logger';
 import split from 'split2';
 import JSONParseStream from './JSONParseStream';
 import promiseFromProcess from './promiseFromProcess';
-import {registerSerializableClass} from '@parcel/utils';
+import {registerSerializableClass} from '@parcel/core';
+import {npmSpecifierFromModuleRequest} from './utils';
+
 // $FlowFixMe
 import pkg from '../package.json';
 
@@ -53,7 +55,10 @@ export class Yarn implements PackageInstaller {
     cwd,
     saveDev = true,
   }: InstallerOptions): Promise<void> {
-    let args = ['add', '--json', ...modules];
+    let args = ['add', '--json'].concat(
+      modules.map(npmSpecifierFromModuleRequest),
+    );
+
     if (saveDev) {
       args.push('-D');
     }

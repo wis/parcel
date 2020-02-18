@@ -9,7 +9,7 @@ import path from 'path';
 
 export default new Optimizer({
   async optimize({contents, map, bundle, options}) {
-    if (!options.minify) {
+    if (!bundle.env.minify) {
       return {contents, map};
     }
 
@@ -28,6 +28,12 @@ export default new Optimizer({
     let config = {
       warnings: true,
       ...userConfig?.config,
+      compress: {
+        ...userConfig?.config?.compress,
+        toplevel:
+          bundle.env.outputFormat === 'esmodule' ||
+          bundle.env.outputFormat === 'commonjs',
+      },
       sourceMap: {
         filename: path.relative(options.projectRoot, bundle.filePath),
       },

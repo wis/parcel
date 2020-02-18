@@ -19,7 +19,7 @@ import {
   prepareForSerialization,
   restoreDeserializedObject,
   serialize,
-} from '@parcel/utils';
+} from '@parcel/core';
 import ThrowableDiagnostic, {anyToDiagnostic} from '@parcel/diagnostic';
 import Worker, {type WorkerCall} from './Worker';
 import cpuCount from './cpuCount';
@@ -53,6 +53,7 @@ export type WorkerApi = {|
   callMaster(CallRequest, ?boolean): Promise<mixed>,
   createReverseHandle(fn: HandleFunction): Handle,
   getSharedReference(ref: number): mixed,
+  resolveSharedReference(value: mixed): ?number,
   callChild?: (childId: number, request: HandleCallRequest) => Promise<mixed>,
 |};
 
@@ -72,6 +73,7 @@ export default class WorkerFarm extends EventEmitter {
   workers: Map<number, Worker> = new Map();
   handles: Map<number, Handle> = new Map();
   sharedReferences: Map<number, mixed> = new Map();
+  sharedReferencesByValue: Map<mixed, number> = new Map();
   profiler: ?Profiler;
 
   constructor(farmOptions: $Shape<FarmOptions> = {}) {
@@ -121,6 +123,8 @@ export default class WorkerFarm extends EventEmitter {
         });
       }),
     getSharedReference: (ref: number) => this.sharedReferences.get(ref),
+    resolveSharedReference: (value: mixed) =>
+      this.sharedReferencesByValue.get(value),
   };
 
   warmupWorker(method: string, args: Array<any>): void {
@@ -334,6 +338,7 @@ export default class WorkerFarm extends EventEmitter {
     }
     this.handles = new Map();
     this.sharedReferences = new Map();
+    this.sharedReferencesByValue = new Map();
 
     await Promise.all(
       Array.from(this.workers.values()).map(worker => this.stopWorker(worker)),
@@ -368,6 +373,7 @@ export default class WorkerFarm extends EventEmitter {
   async createSharedReference(value: mixed) {
     let ref = referenceId++;
     this.sharedReferences.set(ref, value);
+    this.sharedReferencesByValue.set(value, ref);
     let promises = [];
     for (let worker of this.workers.values()) {
       promises.push(
@@ -389,6 +395,7 @@ export default class WorkerFarm extends EventEmitter {
       ref,
       dispose: () => {
         this.sharedReferences.delete(ref);
+        this.sharedReferencesByValue.delete(value);
         let promises = [];
         for (let worker of this.workers.values()) {
           promises.push(

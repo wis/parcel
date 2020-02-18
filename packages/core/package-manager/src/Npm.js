@@ -7,7 +7,9 @@ import path from 'path';
 import spawn from 'cross-spawn';
 import logger from '@parcel/logger';
 import promiseFromProcess from './promiseFromProcess';
-import {registerSerializableClass} from '@parcel/utils';
+import {registerSerializableClass} from '@parcel/core';
+import {npmSpecifierFromModuleRequest} from './utils';
+
 // $FlowFixMe
 import pkg from '../package.json';
 
@@ -26,12 +28,9 @@ export class Npm implements PackageInstaller {
       await fs.writeFile(path.join(cwd, 'package.json'), '{}');
     }
 
-    let args = [
-      'install',
-      '--json',
-      ...modules,
-      saveDev ? '--save-dev' : '--save',
-    ];
+    let args = ['install', '--json', saveDev ? '--save-dev' : '--save'].concat(
+      modules.map(npmSpecifierFromModuleRequest),
+    );
 
     let installProcess = spawn(NPM_CMD, args, {cwd});
     let stdout = '';

@@ -81,15 +81,22 @@ export default class ResolverRunner {
         }
       }
     } else {
+      if (dependency.isURL && dependency.moduleSpecifier.startsWith('//')) {
+        // A protocol-relative URL, e.g `url('//example.com/foo.png')`
+        return null;
+      }
       filePath = dependency.moduleSpecifier;
     }
 
     if (dependency.isURL) {
       let parsed = URL.parse(filePath);
       if (typeof parsed.pathname !== 'string') {
-        throw new Error('Received URL without a pathname.');
+        throw new Error(`Received URL without a pathname ${filePath}.`);
       }
       filePath = decodeURIComponent(parsed.pathname);
+      if (!pipeline) {
+        pipeline = 'url';
+      }
     }
 
     for (let resolver of resolvers) {

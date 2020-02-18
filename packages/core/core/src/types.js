@@ -5,6 +5,7 @@ import type {
   BundleGroup,
   Engines,
   EnvironmentContext,
+  EnvMap,
   File,
   FilePath,
   Glob,
@@ -14,6 +15,7 @@ import type {
   ModuleSpecifier,
   PackageName,
   PackageJSON,
+  ReporterEvent,
   ResolvedParcelConfigFile,
   Semver,
   ServerOptions,
@@ -33,9 +35,14 @@ import type {PackageManager} from '@parcel/package-manager';
 export type Environment = {|
   context: EnvironmentContext,
   engines: Engines,
-  includeNodeModules: boolean | Array<PackageName>,
+  includeNodeModules:
+    | boolean
+    | Array<PackageName>
+    | {[PackageName]: boolean, ...},
   outputFormat: OutputFormat,
   isLibrary: boolean,
+  minify: boolean,
+  scopeHoist: boolean,
 |};
 
 export type Target = {|
@@ -44,7 +51,7 @@ export type Target = {|
   env: Environment,
   sourceMap?: TargetSourceMapOptions,
   name: string,
-  publicUrl: ?string,
+  publicUrl: string,
   loc?: ?SourceLocation,
 |};
 
@@ -56,6 +63,7 @@ export type Dependency = {|
   isOptional: boolean,
   isURL: boolean,
   isWeak: ?boolean,
+  isDeferred: boolean,
   loc: ?SourceLocation,
   env: Environment,
   meta: Meta,
@@ -75,6 +83,7 @@ export type Asset = {|
   includedFiles: Map<FilePath, File>,
   isIsolated: boolean,
   isInline: boolean,
+  isSplittable: ?boolean,
   isSource: boolean,
   outputHash: string,
   env: Environment,
@@ -93,7 +102,7 @@ export type ParcelOptions = {|
   rootDir: FilePath,
   config?: ResolvedParcelConfigFile,
   defaultConfig?: ResolvedParcelConfigFile,
-  env: {+[string]: string, ...},
+  env: EnvMap,
   targets: ?(Array<string> | {+[string]: TargetDescriptor, ...}),
   defaultEngines?: Engines,
 
@@ -104,7 +113,9 @@ export type ParcelOptions = {|
   minify: boolean,
   scopeHoist: boolean,
   sourceMaps: boolean,
-  hot: ServerOptions | false,
+  publicUrl: string,
+  distDir: ?FilePath,
+  hot: boolean,
   serve: ServerOptions | false,
   autoinstall: boolean,
   logLevel: LogLevel,
@@ -140,6 +151,7 @@ export type DependencyNode = {|
   id: string,
   type: 'dependency',
   value: Dependency,
+  complete?: boolean,
 |};
 
 export type RootNode = {|id: string, +type: 'root', value: string | null|};
@@ -184,10 +196,15 @@ export type EntrySpecifierNode = {|
   value: ModuleSpecifier,
 |};
 
+export type Entry = {|
+  filePath: FilePath,
+  packagePath?: FilePath,
+|};
+
 export type EntryFileNode = {|
   id: string,
   +type: 'entry_file',
-  value: ModuleSpecifier,
+  value: Entry,
 |};
 
 export type AssetGraphNode =
@@ -278,14 +295,17 @@ export type CacheEntry = {|
 
 export type Bundle = {|
   id: string,
+  hashReference: string,
   type: string,
   env: Environment,
   entryAssetIds: Array<string>,
   isEntry: ?boolean,
   isInline: ?boolean,
+  isSplittable: ?boolean,
   target: Target,
   filePath: ?FilePath,
   name: ?string,
+  displayName: ?string,
   pipeline: ?string,
   stats: Stats,
 |};
@@ -311,3 +331,5 @@ export type ValidationOpts = {|
   request: AssetRequestDesc,
   options: ParcelOptions,
 |};
+
+export type ReportFn = (event: ReporterEvent) => void;
