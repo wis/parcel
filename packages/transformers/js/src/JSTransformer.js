@@ -58,7 +58,7 @@ export default new Transformer({
       version: '7.0.0',
       isDirty: false,
       program: parse(code, {
-        filename: this.name,
+        sourceFilename: this.name,
         allowReturnOutsideFunction: true,
         strictMode: false,
         sourceType: 'module',

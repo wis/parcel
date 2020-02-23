@@ -2,7 +2,6 @@
 
 import type {
   Asset,
-  AST,
   Bundle,
   BundleGraph,
   PluginOptions,
@@ -39,7 +38,7 @@ export function link({
 }: {|
   bundle: Bundle,
   bundleGraph: BundleGraph,
-  ast: AST,
+  ast: any,
   options: PluginOptions,
 |}) {
   let format = OutputFormats[bundle.env.outputFormat];
@@ -176,6 +175,7 @@ export function link({
           parent = path.getStatementParent();
         }
 
+        // TODO?
         let [decl] = parent.insertBefore(
           DEFAULT_INTEROP_TEMPLATE({
             NAME: t.identifier(name),
@@ -343,12 +343,15 @@ export function link({
               THROW_TEMPLATE({MODULE: t.stringLiteral(source.value)}),
             );
           } else if (dep.isWeak && dep.isDeferred) {
+            // TODO
             path.remove();
           } else {
             let name = addExternalModule(path, dep);
             if (isUnusedValue(path) || !name) {
+              // TODO
               path.remove();
             } else {
+              // TODO
               path.replaceWith(t.identifier(name));
             }
           }
@@ -395,8 +398,10 @@ export function link({
           }
 
           if (node) {
+            // TODO
             path.replaceWith(node);
           } else {
+            // TODO
             path.remove();
           }
         }
@@ -419,6 +424,7 @@ export function link({
             .find(dep => dep.moduleSpecifier === source.value),
         );
         let mod = nullthrows(bundleGraph.getDependencyResolution(dep));
+        // TODO
         path.replaceWith(t.valueToNode(mod.id));
       }
     },
@@ -458,6 +464,7 @@ export function link({
           }
 
           if (id.properties.length === 0) {
+            // TODO
             path.remove();
           }
         } else if (t.isIdentifier(id)) {
@@ -474,9 +481,11 @@ export function link({
           }
 
           for (let ref of binding.referencePaths) {
+            // TODO
             ref.replaceWith(t.identifier(init));
           }
 
+          // TODO
           path.remove();
         }
       },
@@ -509,6 +518,7 @@ export function link({
 
         // Check if $id$export$name exists and if so, replace the node by it.
         if (identifier) {
+          // TODO
           path.replaceWith(t.identifier(identifier));
         }
       },
@@ -520,6 +530,8 @@ export function link({
       }
 
       if (replacements.has(name)) {
+        // TODO
+        // console.log(name, replacements.get(name));
         path.node.name = replacements.get(name);
       }
 
@@ -538,7 +550,10 @@ export function link({
             node = t.objectExpression([]);
           }
         }
+
+        // `name` was not a binding, no need to cleanup the old path
         path.replaceWith(node);
+        // TODO register new
         return;
       }
 

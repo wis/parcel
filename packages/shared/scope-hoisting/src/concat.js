@@ -106,7 +106,7 @@ async function processAsset(bundle: Bundle, asset: Asset) {
   let statements = parse(code, asset.filePath);
 
   if (statements[0]) {
-    addComment(statements[0], ` ASSET: ${asset.filePath}`);
+    t.addComment(statements[0], 'leading', ` ASSET: ${asset.filePath}`, true);
   }
 
   if (asset.meta.shouldWrap) {
@@ -124,16 +124,6 @@ function parse(code, filename) {
   });
 
   return ast.program.body;
-}
-
-function addComment(statement, comment) {
-  if (!statement.leadingComments) {
-    statement.leadingComments = [];
-  }
-  statement.leadingComments.push({
-    type: 'CommentLine',
-    value: comment,
-  });
 }
 
 function getUsedExports(
