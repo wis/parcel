@@ -30,7 +30,7 @@ function assertString(v): string {
   return v;
 }
 
-export function link({
+export default function link({
   bundle,
   bundleGraph,
   ast,
@@ -62,7 +62,6 @@ export function link({
         bundle: b,
         assets: new Set(),
       });
-      // TODO?
     }
   }
 
@@ -175,13 +174,13 @@ export function link({
           parent = path.getStatementParent();
         }
 
-        // TODO?
         let [decl] = parent.insertBefore(
           DEFAULT_INTEROP_TEMPLATE({
             NAME: t.identifier(name),
             MODULE: node,
           }),
         );
+        // FIXME? register new binding `name` and reference `node`, `$parcel$interopDefault`
 
         if (binding) {
           binding.reference(decl.get('declarations.0.init'));
@@ -314,7 +313,7 @@ export function link({
         return;
       }
 
-      // each require('module') call gets replaced with $parcel$require(id, 'module')
+      // each require('module') call gets replaced with $parcel$require('id', 'module')
       if (callee.name === '$parcel$require') {
         let [id, source] = args;
         if (
@@ -323,7 +322,7 @@ export function link({
           !t.isStringLiteral(source)
         ) {
           throw new Error(
-            'invariant: invalid signature, expected : $parcel$require(number, string)',
+            'invariant: invalid signature, expected: $parcel$require(string, string)',
           );
         }
 
@@ -343,16 +342,14 @@ export function link({
               THROW_TEMPLATE({MODULE: t.stringLiteral(source.value)}),
             );
           } else if (dep.isWeak && dep.isDeferred) {
-            // TODO
             path.remove();
           } else {
             let name = addExternalModule(path, dep);
             if (isUnusedValue(path) || !name) {
-              // TODO
               path.remove();
             } else {
-              // TODO
               path.replaceWith(t.identifier(name));
+              // FIXME reference `name`
             }
           }
         } else {
@@ -374,11 +371,17 @@ export function link({
                   if (binding.path.node.init) {
                     binding.path
                       .getStatementParent()
-                      .insertAfter(ESMODULE_TEMPLATE({EXPORTS: name}));
+                      .insertAfter(
+                        ESMODULE_TEMPLATE({EXPORTS: t.identifier(name)}),
+                      );
+                    // FIXME reference `name`, `$parcel$defineInteropFlag`
                   }
 
                   for (let path of binding.constantViolations) {
-                    path.insertAfter(ESMODULE_TEMPLATE({EXPORTS: name}));
+                    path.insertAfter(
+                      ESMODULE_TEMPLATE({EXPORTS: t.identifier(name)}),
+                    );
+                    // FIXME reference `name`, `$parcel$defineInteropFlag`
                   }
 
                   binding.path.setData('hasESModuleFlag', true);
@@ -393,17 +396,18 @@ export function link({
               let call = t.callExpression(getIdentifier(mod, 'init'), []);
               node = node ? t.sequenceExpression([call, node]) : call;
             }
+
+            path.replaceWith(node);
+            // FIXME reference node = (`init`, `id`)
+            return;
           } else if (mod.type === 'js') {
-            node = addBundleImport(mod, path);
+            node = nullthrows(addBundleImport(mod, path));
+            path.replaceWith(node);
+            // FIXME reference `node`
+            return;
           }
 
-          if (node) {
-            // TODO
-            path.replaceWith(node);
-          } else {
-            // TODO
-            path.remove();
-          }
+          path.remove();
         }
       } else if (callee.name === '$parcel$require$resolve') {
         let [id, source] = args;
@@ -413,7 +417,7 @@ export function link({
           !t.isStringLiteral(source)
         ) {
           throw new Error(
-            'invariant: invalid signature, expected : $parcel$require$resolve(number, string)',
+            'invariant: invalid signature, expected: $parcel$require$resolve(string, string)',
           );
         }
 
@@ -424,8 +428,7 @@ export function link({
             .find(dep => dep.moduleSpecifier === source.value),
         );
         let mod = nullthrows(bundleGraph.getDependencyResolution(dep));
-        // TODO
-        path.replaceWith(t.valueToNode(mod.id));
+        path.replaceWith(t.stringLiteral(mod.id));
       }
     },
     VariableDeclarator: {
@@ -464,7 +467,7 @@ export function link({
           }
 
           if (id.properties.length === 0) {
-            // TODO
+            // TODO unregister old
             path.remove();
           }
         } else if (t.isIdentifier(id)) {
@@ -481,11 +484,12 @@ export function link({
           }
 
           for (let ref of binding.referencePaths) {
-            // TODO
+            // TODO unregister old
             ref.replaceWith(t.identifier(init));
+            // FIXME reference `init`
           }
 
-          // TODO
+          // TODO unregister old
           path.remove();
         }
       },
@@ -518,8 +522,9 @@ export function link({
 
         // Check if $id$export$name exists and if so, replace the node by it.
         if (identifier) {
-          // TODO
+          // FIXME unregister `object`
           path.replaceWith(t.identifier(identifier));
+          // FIXME register `identifier`
         }
       },
     },
@@ -527,12 +532,6 @@ export function link({
       let {name} = path.node;
       if (typeof name !== 'string') {
         return;
-      }
-
-      if (replacements.has(name)) {
-        // TODO
-        // console.log(name, replacements.get(name));
-        path.node.name = replacements.get(name);
       }
 
       if (imports.has(name)) {
@@ -551,14 +550,17 @@ export function link({
           }
         }
 
-        // `name` was not a binding, no need to cleanup the old path
+        // FIXME unreference `name`
         path.replaceWith(node);
-        // TODO register new
-        return;
-      }
-
-      // If it's an undefined $id$exports identifier.
-      if (exportsMap.has(name) && !path.scope.hasBinding(name)) {
+        if (t.isIdentifier(node)) {
+          // FIXME reference node.name
+        }
+      } else if (replacements.has(name)) {
+        // FIXME unreference `name`
+        path.node.name = replacements.get(name);
+        // FIXME reference replacement
+      } else if (exportsMap.has(name) && !path.scope.hasBinding(name)) {
+        // If it's an undefined $id$exports identifier.
         path.replaceWith(t.objectExpression([]));
       }
     },
@@ -592,7 +594,7 @@ export function link({
         );
 
         treeShake(path.scope, exported);
-        // path.stop(); // related to last check in ReferencedIdentifier visitor
+        // path.stop(); // related to the last check in ReferencedIdentifier visitor
       },
     },
   });

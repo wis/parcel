@@ -32,7 +32,7 @@ const TYPEOF = {
   require: 'function',
 };
 
-export function hoist(asset: MutableAsset) {
+export default function hoist(asset: MutableAsset) {
   if (
     !asset.ast ||
     asset.ast.type !== 'babel' ||
@@ -629,6 +629,7 @@ function addExport(asset: MutableAsset, path, local, exported) {
 
 function hasImport(asset: MutableAsset, id) {
   for (let dep of asset.getDependencies()) {
+    // TODO profile `new Set(v).has` vs `[...v].includes()`
     if (new Set(dep.symbols.values()).has(id)) {
       return true;
     }
@@ -638,6 +639,7 @@ function hasImport(asset: MutableAsset, id) {
 }
 
 function hasExport(asset: MutableAsset, id) {
+  // TODO profile `new Set(v).has` vs `[...v].includes()`
   return new Set(asset.symbols.values()).has(id);
 }
 

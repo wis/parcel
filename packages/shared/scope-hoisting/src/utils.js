@@ -71,29 +71,28 @@ export function pathRemove(path: any) {
 
 const RemoveVisitor = {
   Identifier(node, scope) {
-    dereferenceIdentifier(node, scope);
+    dereferenceBinding(node, scope);
   },
 };
 
-function dereferenceIdentifier(node, scope) {
-  let binding = scope.getBinding(node.name);
+// remove references to `node` in `scope`
+export function dereferenceBinding(id: any, scope: any) {
+  let binding = scope.getBinding(id.name);
   if (binding) {
-    let i = binding.referencePaths.findIndex(v => v.node === node);
+    let i = binding.referencePaths.findIndex(({node}) => node === id);
     if (i >= 0) {
       binding.dereference();
       binding.referencePaths.splice(i, 1);
-      return;
     }
 
     let j = binding.constantViolations.findIndex(v =>
-      Object.values(v.getBindingIdentifiers()).includes(node),
+      Object.values(v.getBindingIdentifiers()).includes(id),
     );
     if (j >= 0) {
       binding.constantViolations.splice(j, 1);
       if (binding.constantViolations.length == 0) {
         binding.constant = true;
       }
-      return;
     }
   }
 }

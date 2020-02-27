@@ -1,6 +1,6 @@
 // @flow
-export {hoist} from './hoist';
-export {concat} from './concat';
-export {link} from './link';
+export {default as hoist} from './hoist';
+export {default as concat} from './concat';
+export {default as link} from './link';
 export {default as shake} from './shake';
-export {generate} from './generate';
+export {default as generate} from './generate';

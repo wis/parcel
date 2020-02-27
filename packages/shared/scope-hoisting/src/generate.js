@@ -5,7 +5,11 @@ import babelGenerate from '@babel/generator';
 import nullthrows from 'nullthrows';
 import {isEntry} from './utils';
 
-export function generate(bundleGraph: BundleGraph, bundle: Bundle, ast: any) {
+export default function generate(
+  bundleGraph: BundleGraph,
+  bundle: Bundle,
+  ast: any,
+) {
   let {code} = babelGenerate(ast, {
     minified: bundle.env.minify,
     comments: true, // retain /*@__PURE__*/ comments for terser

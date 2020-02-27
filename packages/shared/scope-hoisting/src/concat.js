@@ -1,15 +1,15 @@
 // @flow
 
 import type {Bundle, Asset, Symbol, BundleGraph} from '@parcel/types';
+
 import * as babylon from '@babel/parser';
-import path from 'path';
 import * as t from '@babel/types';
-import * as walk from 'babylon-walk';
-import {getName, getIdentifier} from './utils';
-import fs from 'fs';
-import nullthrows from 'nullthrows';
 import {PromiseQueue} from '@parcel/utils';
-import {needsPrelude} from './utils';
+import * as walk from 'babylon-walk';
+import fs from 'fs';
+import path from 'path';
+import nullthrows from 'nullthrows';
+import {getName, getIdentifier, needsPrelude} from './utils';
 
 const HELPERS_PATH = path.join(__dirname, 'helpers.js');
 const HELPERS = fs.readFileSync(path.join(__dirname, 'helpers.js'), 'utf8');
@@ -24,7 +24,7 @@ type TraversalContext = {|
 |};
 
 // eslint-disable-next-line no-unused-vars
-export async function concat(bundle: Bundle, bundleGraph: BundleGraph) {
+export default async function concat(bundle: Bundle, bundleGraph: BundleGraph) {
   let queue = new PromiseQueue({maxConcurrent: 32});
   bundle.traverse((node, shouldWrap) => {
     switch (node.type) {
