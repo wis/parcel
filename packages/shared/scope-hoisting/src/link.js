@@ -16,7 +16,12 @@ import template from '@babel/template';
 import * as t from '@babel/types';
 import traverse from '@babel/traverse';
 import treeShake from './shake';
-import {getName, getIdentifier} from './utils';
+import {
+  dereferenceIdentifier,
+  referenceIdentifier,
+  getName,
+  getIdentifier,
+} from './utils';
 import OutputFormats from './formats/index.js';
 
 const ESMODULE_TEMPLATE = template(`$parcel$defineInteropFlag(EXPORTS);`);
@@ -180,13 +185,12 @@ export default function link({
             MODULE: node,
           }),
         );
-        // FIXME? register new binding `name` and reference `node`, `$parcel$interopDefault`
-
-        if (binding) {
-          binding.reference(decl.get('declarations.0.init'));
-        }
-
         getScopeBefore(parent).registerDeclaration(decl);
+        referenceIdentifier(decl.get('declarations.0.init.callee'), decl.scope);
+        referenceIdentifier(
+          decl.get('declarations.0.init.arguments.0'),
+          decl.scope,
+        );
       }
 
       return t.identifier(name);
@@ -334,7 +338,6 @@ export default function link({
         );
 
         let mod = bundleGraph.getDependencyResolution(dep);
-        let node;
 
         if (!mod) {
           if (dep.isOptional) {
@@ -349,11 +352,12 @@ export default function link({
               path.remove();
             } else {
               path.replaceWith(t.identifier(name));
-              // FIXME reference `name`
+              referenceIdentifier(path, path.scope);
             }
           }
         } else {
           if (mod.meta.id && assets.get(assertString(mod.meta.id))) {
+            let node;
             // Replace with nothing if the require call's result is not used.
             if (!isUnusedValue(path)) {
               let name = assertString(mod.meta.exportsIdentifier);
@@ -369,19 +373,33 @@ export default function link({
                 let binding = path.scope.getBinding(name);
                 if (binding && !binding.path.getData('hasESModuleFlag')) {
                   if (binding.path.node.init) {
-                    binding.path
+                    let [stmt] = binding.path
                       .getStatementParent()
                       .insertAfter(
                         ESMODULE_TEMPLATE({EXPORTS: t.identifier(name)}),
                       );
-                    // FIXME reference `name`, `$parcel$defineInteropFlag`
+                    referenceIdentifier(
+                      stmt.get('expression.callee'),
+                      stmt.scope,
+                    );
+                    referenceIdentifier(
+                      stmt.get('expression.arguments.0'),
+                      stmt.scope,
+                    );
                   }
 
                   for (let path of binding.constantViolations) {
-                    path.insertAfter(
+                    let [stmt] = path.insertAfter(
                       ESMODULE_TEMPLATE({EXPORTS: t.identifier(name)}),
                     );
-                    // FIXME reference `name`, `$parcel$defineInteropFlag`
+                    referenceIdentifier(
+                      stmt.get('expression.callee'),
+                      stmt.scope,
+                    );
+                    referenceIdentifier(
+                      stmt.get('expression.arguments.0'),
+                      stmt.scope,
+                    );
                   }
 
                   binding.path.setData('hasESModuleFlag', true);
@@ -394,17 +412,30 @@ export default function link({
             // function, if statement, or conditional expression.
             if (mod.meta.shouldWrap) {
               let call = t.callExpression(getIdentifier(mod, 'init'), []);
-              node = node ? t.sequenceExpression([call, node]) : call;
+              if (node) {
+                path.replaceWith(t.sequenceExpression([call, node]));
+                referenceIdentifier(
+                  path.get('expressions.0.callee'),
+                  path.scope,
+                );
+                referenceIdentifier(path.get('expressions.1'), path.scope);
+              } else {
+                path.replaceWith(call);
+                referenceIdentifier(path.get('callee'), path.scope);
+              }
+              return;
+            } else if (node) {
+              path.replaceWith(node);
+              referenceIdentifier(path, path.scope);
+              return;
             }
-
-            path.replaceWith(node);
-            // FIXME reference node = (`init`, `id`)
-            return;
           } else if (mod.type === 'js') {
-            node = nullthrows(addBundleImport(mod, path));
-            path.replaceWith(node);
-            // FIXME reference `node`
-            return;
+            let node = addBundleImport(mod, path);
+            if (node) {
+              path.replaceWith(node);
+              referenceIdentifier(path, path.scope);
+              return;
+            }
           }
 
           path.remove();
@@ -467,7 +498,6 @@ export default function link({
           }
 
           if (id.properties.length === 0) {
-            // TODO unregister old
             path.remove();
           }
         } else if (t.isIdentifier(id)) {
@@ -484,12 +514,11 @@ export default function link({
           }
 
           for (let ref of binding.referencePaths) {
-            // TODO unregister old
+            dereferenceIdentifier(ref.node, ref.scope);
             ref.replaceWith(t.identifier(init));
-            // FIXME reference `init`
+            referenceIdentifier(ref, ref.scope);
           }
 
-          // TODO unregister old
           path.remove();
         }
       },
@@ -522,9 +551,9 @@ export default function link({
 
         // Check if $id$export$name exists and if so, replace the node by it.
         if (identifier) {
-          // FIXME unregister `object`
+          dereferenceIdentifier(object, path.scope);
           path.replaceWith(t.identifier(identifier));
-          // FIXME register `identifier`
+          referenceIdentifier(path, path.scope);
         }
       },
     },
@@ -550,15 +579,15 @@ export default function link({
           }
         }
 
-        // FIXME unreference `name`
+        dereferenceIdentifier(path.node, path.scope);
         path.replaceWith(node);
         if (t.isIdentifier(node)) {
-          // FIXME reference node.name
+          referenceIdentifier(path, path.scope);
         }
       } else if (replacements.has(name)) {
-        // FIXME unreference `name`
+        dereferenceIdentifier(path.node, path.scope);
         path.node.name = replacements.get(name);
-        // FIXME reference replacement
+        referenceIdentifier(path, path.scope);
       } else if (exportsMap.has(name) && !path.scope.hasBinding(name)) {
         // If it's an undefined $id$exports identifier.
         path.replaceWith(t.objectExpression([]));

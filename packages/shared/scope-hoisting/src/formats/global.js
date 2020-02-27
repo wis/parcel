@@ -29,11 +29,10 @@ export function generateBundleImports(
 
   for (let asset of assets) {
     // var ${asset.meta.exportsIdentifier}; was inserted already, add RHS
-    let [decl] = path.scope
+    path.scope
       .getBinding(asset.meta.exportsIdentifier)
       .path.get('init')
       .replaceWith(IMPORT_TEMPLATE({ASSET_ID: t.stringLiteral(asset.id)}));
-    path.scope.getBinding('parcelRequire').reference(decl.get('callee'));
   }
 }
 

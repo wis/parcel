@@ -1,7 +1,9 @@
 // @flow
 import type {Asset, MutableAsset, Bundle, BundleGraph} from '@parcel/types';
+
 import * as t from '@babel/types';
 import {simple as walkSimple} from 'babylon-walk';
+import nullthrows from 'nullthrows';
 
 export function getName(
   asset: Asset | MutableAsset,
@@ -71,22 +73,26 @@ export function pathRemove(path: any) {
 
 const RemoveVisitor = {
   Identifier(node, scope) {
-    dereferenceBinding(node, scope);
+    dereferenceIdentifier(node, scope);
   },
 };
 
+export function referenceIdentifier(path: any, scope: any) {
+  scope.getBinding(path.node.name)?.reference(path);
+}
+
 // remove references to `node` in `scope`
-export function dereferenceBinding(id: any, scope: any) {
-  let binding = scope.getBinding(id.name);
+export function dereferenceIdentifier(node: any, scope: any) {
+  let binding = scope.getBinding(node.name);
   if (binding) {
-    let i = binding.referencePaths.findIndex(({node}) => node === id);
+    let i = binding.referencePaths.findIndex(v => v.node === node);
     if (i >= 0) {
       binding.dereference();
       binding.referencePaths.splice(i, 1);
     }
 
     let j = binding.constantViolations.findIndex(v =>
-      Object.values(v.getBindingIdentifiers()).includes(id),
+      Object.values(v.getBindingIdentifiers()).includes(node),
     );
     if (j >= 0) {
       binding.constantViolations.splice(j, 1);
