@@ -1,11 +1,16 @@
-const {execSync, spawn} = require('child_process');
+const {execSync} = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+const PORT = Number(process.argv[2]);
+if (!PORT) {
+  console.error('You need to specify the port of Verdaccio:');
+  console.error('  node verdaccioPublish.js 4000');
+  process.exit(1);
+}
+
 const run = cmd => execSync(cmd, {encoding: 'utf8', cwd: __dirname});
 const bin = cmd => path.join(__dirname, 'node_modules/.bin', cmd);
-
-const PORT = 4000;
 
 const sha = run('git rev-parse --short HEAD').trim();
 const version = JSON.parse(
@@ -14,12 +19,6 @@ const version = JSON.parse(
     'utf8',
   ),
 ).version;
-
-const verdaccio = spawn(
-  bin('verdaccio'),
-  ['--listen', PORT, '--config', 'verdaccio.yml'],
-  {cwd: __dirname},
-);
 
 try {
   run(
@@ -39,5 +38,3 @@ try {
 } finally {
   execSync(`git reset --hard ${sha}`);
 }
-
-verdaccio.kill('SIGINT');
